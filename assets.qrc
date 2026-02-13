@@ -1,0 +1,12 @@
+<!DOCTYPE RCC><RCC version="1.0">
+<qresource>
+    <!-- 图标资源 -->
+    <!-- <file>icons/icon.png</file> -->
+    
+    <!-- 材质资源 -->
+    <!-- <file>shaders/default.mat</file> -->
+    
+    <!-- 模型资源 -->
+    <!-- <file>models/cube.filamesh</file> -->
+</qresource>
+</RCC>
