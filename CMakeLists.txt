@@ -45,33 +45,116 @@ include_directories(
 
 # 源代码文件
 set(SOURCE_FILES
+    # Core
     src/core/FilamentEngine.cpp
     src/core/Renderer.cpp
+    src/core/CameraController.cpp
+    src/core/MaterialManager.cpp
+    src/core/Mesh.cpp
+    src/core/AssetManager.cpp
+    src/core/GltfLoader.cpp
+    src/core/ThreadPool.cpp
+    
+    # Render
+    src/render/FilamentRenderer.cpp
+    src/render/CameraController.cpp
+    src/render/LightSystem.cpp
+    src/render/FilamentEntityMapper.cpp
+    
+    # Scene
+    src/scene/Scene.cpp
+    src/scene/GameObject.cpp
+    src/scene/Camera.cpp
+    src/scene/Node.cpp
+    src/scene/Component.cpp
+    src/scene/TransformComponent.cpp
+    src/scene/MeshComponent.cpp
+    src/scene/CameraComponent.cpp
+    src/scene/LightComponent.cpp
+    src/scene/SelectionManager.cpp
+    
+    # Editor
+    src/editor/CommandManager.cpp
+    src/editor/TransformCommand.cpp
+    src/editor/CreateNodeCommand.cpp
+    src/editor/DeleteNodeCommand.cpp
+    src/editor/Gizmo.cpp
+    src/editor/MoveGizmo.cpp
+    src/editor/RotateGizmo.cpp
+    src/editor/ScaleGizmo.cpp
+    src/editor/PickingManager.cpp
+    
+    # Plugin
+    src/plugin/PluginManager.cpp
+    
+    # UI
     src/ui/MainWindow.cpp
     src/ui/RenderWidget.cpp
     src/ui/SceneTree.cpp
     src/ui/PropertiesPanel.cpp
     src/ui/TitleBar.cpp
     src/ui/DockTitleBar.cpp
-    src/scene/Scene.cpp
-    src/scene/GameObject.cpp
-    src/scene/Camera.cpp
+    
+    # Utils
     src/utils/Logger.cpp
 )
 
 # 头文件
 set(HEADER_FILES
+    # Core
     src/core/FilamentEngine.h
     src/core/Renderer.h
+    src/core/CameraController.h
+    src/core/MaterialManager.h
+    src/core/Mesh.h
+    src/core/AssetManager.h
+    src/core/GltfLoader.h
+    src/core/ThreadPool.h
+    
+    # Render
+    src/render/IRenderer.h
+    src/render/RenderContext.h
+    src/render/CameraController.h
+    src/render/LightSystem.h
+    src/render/FilamentEntityMapper.h
+    
+    # Scene
+    src/scene/Scene.h
+    src/scene/GameObject.h
+    src/scene/Camera.h
+    src/scene/Node.h
+    src/scene/Component.h
+    src/scene/TransformComponent.h
+    src/scene/MeshComponent.h
+    src/scene/CameraComponent.h
+    src/scene/LightComponent.h
+    src/scene/SelectionManager.h
+    
+    # Editor
+    src/editor/ICommand.h
+    src/editor/CommandManager.h
+    src/editor/TransformCommand.h
+    src/editor/CreateNodeCommand.h
+    src/editor/DeleteNodeCommand.h
+    src/editor/Gizmo.h
+    src/editor/MoveGizmo.h
+    src/editor/RotateGizmo.h
+    src/editor/ScaleGizmo.h
+    src/editor/PickingManager.h
+    
+    # Plugin
+    src/plugin/IPlugin.h
+    src/plugin/PluginManager.h
+    
+    # UI
     src/ui/MainWindow.h
     src/ui/RenderWidget.h
     src/ui/SceneTree.h
     src/ui/PropertiesPanel.h
     src/ui/TitleBar.h
     src/ui/DockTitleBar.h
-    src/scene/Scene.h
-    src/scene/GameObject.h
-    src/scene/Camera.h
+    
+    # Utils
     src/utils/Logger.h
 )
 
@@ -113,6 +196,13 @@ target_link_libraries(Kazia PRIVATE
     ${FILAMENT_IMAGE_LIBRARY}
     opengl32
 )
+
+# 添加 Windows 平台特定的库
+if(WIN32)
+    target_link_libraries(Kazia PRIVATE
+        rpcrt4
+    )
+endif()
 
 # 复制 Filament 库文件到输出目录
 if(WIN32)
