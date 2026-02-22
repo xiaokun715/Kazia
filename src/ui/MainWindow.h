@@ -9,7 +9,8 @@
 #include <QStatusBar>
 #include "DockManager.h"
 
-class RenderWidget;
+class IViewPort;
+class ViewportWidget;
 class SceneTreeWidget;
 class PropertiesWidget;
 class TitleBar;
@@ -24,7 +25,7 @@ public:
     explicit MainWindow(QWidget * parent = nullptr);
     ~MainWindow() override;
 
-    RenderWidget* getRenderWidget() const { return m_viewportWidget; }
+    ViewportWidget* getRenderWidget() const { return m_viewportWidget; }
     QWidget* getSceneTree() const { return m_sceneTreeWidget; }
     PropertiesWidget* getPropertiesPanel() const { return m_propertiesWidget; }
     TitleBar* getTitleBar() const { return m_titleBar; }
@@ -38,7 +39,7 @@ private:
 	ads::CDockWidget* m_propertiesDock;
     QWidget* m_sceneTreeWidget;
     PropertiesWidget* m_propertiesWidget;
-    RenderWidget* m_viewportWidget;
+    ViewportWidget* m_viewportWidget;
     ViewportContainer* m_viewportContainer;
 
     // 状态栏组件

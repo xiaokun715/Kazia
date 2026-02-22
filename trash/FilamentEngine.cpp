@@ -15,6 +15,45 @@
 #include <qpaintdevice.h>
 #include <iostream>
 
+#define ICON_GRID   u8"\ue790"
+#define ICON_WORLD  u8"\uece7"
+#define ICON_CAMERA u8"\ue88d"
+#define ICON_SELECT u8"\ue639"
+#define ICON_MOVE u8"\ue67b"
+#define ICON_NORMAL u8"\uec48"
+#define ICON_ROTATE u8"\ue8b8"
+#define ICON_SCALE u8"\ue70f"
+#define ICON_ANGLE u8"\ue67d"
+#define ICON_SHOW u8"\ue760"
+#define ICON_SQUARE u8"\ue656"
+#define ICON_PERSPECTIVE u8"\ue694"
+#define ICON_MENU u8"\ue677"
+#define ICON_METRIC u8"\ue624"
+#define ICON_LIGHT u8"\ue66d"
+
+#define ICON_GRID_UTF8         "\xEE\x9E\x90"  // U+E790
+#define ICON_WORLD_UTF8        "\xEE\xB3\xA7"  // U+ECE7
+#define ICON_CAMERA_UTF8       "\xEE\xA2\x8D"  // U+E88D
+#define ICON_SELECT_UTF8       "\xEE\x98\xB9"  // U+E639
+#define ICON_MOVE_UTF8         "\xEE\x99\xBB"  // U+E67B
+#define ICON_NORMAL_UTF8       "\xEE\xB1\x88"  // U+EC48
+#define ICON_ROTATE_UTF8       "\xEE\xA2\xB8"  // U+E8B8
+#define ICON_SCALE_UTF8        "\xEE\x9C\x8F"  // U+E70F
+#define ICON_ANGLE_UTF8        "\xEE\x99\xBD"  // U+E67D
+#define ICON_SHOW_UTF8         "\xEE\x9D\xA0"  // U+E760
+#define ICON_SQUARE_UTF8       "\xEE\x99\x96"  // U+E656
+#define ICON_PERSPECTIVE_UTF8  "\xEE\x9A\x94"  // U+E694
+#define ICON_MENU_UTF8         "\xEE\x99\xB7"  // U+E677
+#define ICON_METRIC_UTF8       "\xEE\x98\xA4"  // U+E624
+#define ICON_LIGHT_UTF8        "\xEE\x99\xAD"  // U+E66D
+
+#define USE_ICON_FONT(expr) do {                \
+    ImGuiIO& io = ImGui::GetIO();               \
+    ImFont* iconFont = io.Fonts->Fonts[1];      \
+    ImGui::PushFont(iconFont);                  \
+    expr;                                       \
+    ImGui::PopFont();                           \
+} while (0)
 
 FilamentEngine::FilamentEngine()
     : m_engine(nullptr)
@@ -80,12 +119,9 @@ void FilamentEngine::initialize(void* nativeWindow, int width, int height)
     m_viewScene->setViewport(viewport);
     m_viewUI->setViewport(viewport);
 
-    AppConfig cfg = loadAppConfig();
-
     //// ImGui 初始化（移植 SDL 版本的核心逻辑）
-    QString ttfPath = QCoreApplication::applicationDirPath() + cfg.defaultImguiTtf;
-    m_imguiHelper = std::make_unique<filagui::ImGuiHelper>(
-        m_engine, m_viewUI, utils::Path(ttfPath.toUtf8().constData()));
+    QString ttfPath = QCoreApplication::applicationDirPath() + "/fonts/Roboto-Medium.ttf";
+    m_imguiHelper = std::make_unique<filagui::ImGuiHelper>(m_engine, m_viewUI, utils::Path(ttfPath.toUtf8().constData()));
 
     //// 设置初始 DisplaySize（防止初始化断言崩溃）
     updateImGuiDisplaySize(width, height);
@@ -96,11 +132,10 @@ void FilamentEngine::initialize(void* nativeWindow, int width, int height)
 
 void FilamentEngine::SetupEditorStyle()
 {
-    AppConfig cfg = loadAppConfig();
-
     ImGuiStyle& style = ImGui::GetStyle();
     ImGuiIO& io = ImGui::GetIO();
-    QString ttfPath = QCoreApplication::applicationDirPath() + cfg.defaultImguiTtf;
+    QString ttfPath = QCoreApplication::applicationDirPath() + "/fonts/Roboto-Medium.ttf";
+    QString iconTtfPath = QCoreApplication::applicationDirPath() + "/fonts/iconfont.ttf";
 
     style.WindowBorderSize = 0.0f;
     style.ChildBorderSize = 0.0f;
@@ -127,13 +162,16 @@ void FilamentEngine::SetupEditorStyle()
 
     // Glyph ranges: Basic Latin + Latin Supplement + Arrows + Mathematical Operators
     // This lets ImGui atlas include the Unicode symbols used in the toolbar.
+    ImFontConfig cfg;
+    cfg.MergeMode = true;
+    cfg.PixelSnapH = true;
     static const ImWchar glyphRanges[] = {
-        0x0020, 0x00FF, // Basic Latin + Latin Supplement
-        0x2190, 0x22FF, // Arrows (↖ ↻ ⇔ …) + Mathematical Operators (≡ ∠ ⊕ ⊞ …)
-        0, 0xE790
+        0xE604, 0xECE7, // Basic Latin + Latin Supplement
+        0
     };
     io.Fonts->Clear();
-    io.Fonts->AddFontFromFileTTF(ttfPath.toUtf8().constData(), 28.0f, nullptr, glyphRanges);
+    io.Fonts->AddFontFromFileTTF(ttfPath.toUtf8().constData(), 28.0f);
+    io.Fonts->AddFontFromFileTTF(iconTtfPath.toUtf8().constData(), 28.0f, &cfg, glyphRanges);
     io.Fonts->Build();
 
     // 🔴 最后统一 scale
@@ -230,7 +268,7 @@ void FilamentEngine::drawViewportToolbar()
 
     ImGui::PushStyleColor(ImGuiCol_WindowBg,      ImVec4(0.13f, 0.13f, 0.13f, 0.0f));
     ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.0f,  0.0f,  0.0f,  0.2f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.30f, 0.30f, 0.30f, 0.8f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.30f, 0.30f, 1.0f, 0.8f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0.0f,  0.0f,  0.85f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_Text,          ImVec4(0.88f, 0.88f, 0.88f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_Separator,     ImVec4(0.40f, 0.40f, 0.40f, 0.8f));
@@ -238,7 +276,7 @@ void FilamentEngine::drawViewportToolbar()
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4.0f, 0.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,   ImVec2(2.0f, 0.0f));
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,  ImVec2(6.0f, 3.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 10.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
 
     ImGui::Begin("ViewportToolbar", nullptr,
         ImGuiWindowFlags_NoDecoration      |
@@ -287,23 +325,82 @@ void FilamentEngine::drawViewportToolbar()
     };
 
     // ── LEFT GROUP ──────────────────────────────────────────────────────
-    if (Btn(u8"="))           emitImguiSignal(ToolbarAction::Menu);
-    VSep();
-    if (Btn(u8"Perspective")) emitImguiSignal(ToolbarAction::Perspective);
-    VSep();
-    if (Btn(u8"Lit"))         emitImguiSignal(ToolbarAction::Lit);
-    VSep();
-    if (Btn(u8"Show"))        emitImguiSignal(ToolbarAction::Show);
-    VSep();
+    // Hamburger button opens a popup dropdown menu
+    ImGui::SetCursorPosY(cy);
+    if (ImGui::Button(ICON_MENU_UTF8))
+        ImGui::OpenPopup("##ViewportMenu");
 
-    // Red badge (no action needed, just visual)
-    ImGui::PushStyleColor(ImGuiCol_Button,        ImVec4(0.72f, 0.10f, 0.10f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.82f, 0.20f, 0.20f, 1.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive,  ImVec4(0.60f, 0.05f, 0.05f, 1.0f));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 10.0f);
-    Btn(u8" 1 ");
-    ImGui::PopStyleVar();
-    ImGui::PopStyleColor(3);
+    // Popup styles MUST be pushed before BeginPopup to affect the window itself.
+    ImGui::PushStyleColor(ImGuiCol_PopupBg,       ImVec4(0.10f, 0.10f, 0.10f, 0.97f));
+    ImGui::PushStyleColor(ImGuiCol_Header,        ImVec4(0.20f, 0.38f, 0.75f, 0.50f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.22f, 0.42f, 0.80f, 0.80f));
+    ImGui::PushStyleColor(ImGuiCol_HeaderActive,  ImVec4(0.28f, 0.50f, 0.90f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_Text,          ImVec4(0.90f, 0.90f, 0.90f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_TextDisabled,  ImVec4(0.45f, 0.45f, 0.45f, 1.00f));
+    ImGui::PushStyleColor(ImGuiCol_Separator,     ImVec4(0.28f, 0.28f, 0.28f, 1.00f));
+    ImGui::PushStyleVar(ImGuiStyleVar_PopupRounding, 5.0f);
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(6.0f, 8.0f));
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing,   ImVec2(24.0f, 8.0f));
+
+    if (ImGui::BeginPopup("##ViewportMenu")) {
+
+        // ── VIEW ────────────────────────────────────────────────────────
+        ImGui::TextDisabled("VIEW");
+        ImGui::Spacing();
+
+        if (ImGui::BeginMenu("View Mode")) {
+            if (ImGui::MenuItem("Perspective", "P")) emitImguiSignal(ToolbarAction::Perspective);
+            if (ImGui::MenuItem("Lit",         "L")) emitImguiSignal(ToolbarAction::Lit);
+            ImGui::EndMenu();
+        }
+        if (ImGui::MenuItem("Show / Hide...")) emitImguiSignal(ToolbarAction::Show);
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // ── TRANSFORM ───────────────────────────────────────────────────
+        ImGui::TextDisabled("TRANSFORM");
+        ImGui::Spacing();
+
+        if (ImGui::BeginMenu("Transform Tool")) {
+            if (ImGui::MenuItem("Select", "Q", m_activeTool == ToolbarAction::SelectTool))
+                emitImguiSignal(ToolbarAction::SelectTool);
+            if (ImGui::MenuItem("Move",   "W", m_activeTool == ToolbarAction::MoveTool))
+                emitImguiSignal(ToolbarAction::MoveTool);
+            if (ImGui::MenuItem("Rotate", "E", m_activeTool == ToolbarAction::RotateTool))
+                emitImguiSignal(ToolbarAction::RotateTool);
+            if (ImGui::MenuItem("Scale",  "R", m_activeTool == ToolbarAction::ScaleTool))
+                emitImguiSignal(ToolbarAction::ScaleTool);
+            ImGui::EndMenu();
+        }
+
+        ImGui::Spacing();
+        ImGui::Separator();
+        ImGui::Spacing();
+
+        // ── SPACE ───────────────────────────────────────────────────────
+        ImGui::TextDisabled("COORDINATE SPACE");
+        ImGui::Spacing();
+
+        if (ImGui::MenuItem("World Space", nullptr, m_activeTool == ToolbarAction::WorldSpace))
+            emitImguiSignal(ToolbarAction::WorldSpace);
+        if (ImGui::MenuItem("Local Space", nullptr, m_activeTool == ToolbarAction::LocalSpace))
+            emitImguiSignal(ToolbarAction::LocalSpace);
+
+        ImGui::EndPopup();
+    }
+
+    ImGui::PopStyleVar(3);
+    ImGui::PopStyleColor(7);
+
+    VSep();
+    if (Btn(ICON_PERSPECTIVE" Perspective")) emitImguiSignal(ToolbarAction::Perspective);
+    VSep();
+    if (Btn(ICON_LIGHT" Lig"))         emitImguiSignal(ToolbarAction::Lit);
+    VSep();
+    if (Btn(ICON_SHOW" SHOW"))        emitImguiSignal(ToolbarAction::Show);
+    VSep();
 
     // ── RIGHT GROUP (right-aligned) ──────────────────────────────────────
     auto calcW = [&](const char8_t* lbl) -> float {
@@ -312,94 +409,42 @@ void FilamentEngine::drawViewportToolbar()
     const float sepW = 6.0f + 1.0f + 6.0f;
 
     float rightW =
-        calcW(u8"Sel") + calcW(u8"Mov") + calcW(u8"Rot") + calcW(u8"Scl") + 2.0f * 3 +
+        calcW(ICON_SELECT) + calcW(ICON_MOVE) + calcW(ICON_ROTATE) + calcW(ICON_SCALE) + 2.0f * 3 +
         sepW +
-        calcW(u8"Wld") + calcW(u8"Lcl") + 2.0f +
+        calcW(ICON_WORLD) + calcW(ICON_NORMAL) + 2.0f +
         sepW +
-        calcW(u8"# 10") + calcW(u8"^ 10") + calcW(u8"~ .25") + calcW(u8"Cam 1") + calcW(u8"+") + 2.0f * 4 +
+        calcW(ICON_GRID) + calcW(ICON_ANGLE) + calcW(ICON_METRIC) + calcW(ICON_CAMERA) + calcW(ICON_SQUARE) + 2.0f * 4 +
         10.0f;
 
     ImGui::SameLine();
     ImGui::SetCursorPosX(io.DisplaySize.x - rightW);
 
     // Transform tools — highlighted when active
-    ToolBtn(u8"Sel", ToolbarAction::SelectTool);
-    ImGui::SameLine(0, 2); ToolBtn(u8"Mov", ToolbarAction::MoveTool);
-    ImGui::SameLine(0, 2); ToolBtn(u8"Rot", ToolbarAction::RotateTool);
-    ImGui::SameLine(0, 2); ToolBtn(u8"Scl", ToolbarAction::ScaleTool);
+    ToolBtn(ICON_SELECT, ToolbarAction::SelectTool);
+    ImGui::SameLine(0, 2); ToolBtn(ICON_MOVE, ToolbarAction::MoveTool);
+    ImGui::SameLine(0, 2); ToolBtn(ICON_ROTATE, ToolbarAction::RotateTool);
+    ImGui::SameLine(0, 2); ToolBtn(ICON_SCALE, ToolbarAction::ScaleTool);
 
     VSep();
 
-    if (Btn(u8"Wld")) emitImguiSignal(ToolbarAction::WorldSpace);
+    if (Btn(ICON_WORLD)) emitImguiSignal(ToolbarAction::WorldSpace);
     ImGui::SameLine(0, 2);
-    if (Btn(u8"Lcl")) emitImguiSignal(ToolbarAction::LocalSpace);
+    if (Btn(ICON_NORMAL)) emitImguiSignal(ToolbarAction::LocalSpace);
 
     VSep();
-
-    if (Btn(u8"# 10"))  emitImguiSignal(ToolbarAction::GridSize);
+    if (Btn(ICON_GRID))  emitImguiSignal(ToolbarAction::GridSize);
     ImGui::SameLine(0, 2);
-    if (Btn(u8"^ 10"))  emitImguiSignal(ToolbarAction::AngleSnap);
+    if (Btn(ICON_ANGLE))  emitImguiSignal(ToolbarAction::AngleSnap);
     ImGui::SameLine(0, 2);
-    if (Btn(u8"~ .25")) emitImguiSignal(ToolbarAction::LocationSnap);
+    if (Btn(ICON_METRIC)) emitImguiSignal(ToolbarAction::LocationSnap);
     ImGui::SameLine(0, 2);
-    if (Btn(u8"Cam 1")) emitImguiSignal(ToolbarAction::CameraSpeed);
+    if (Btn(ICON_CAMERA)) emitImguiSignal(ToolbarAction::CameraSpeed);
     ImGui::SameLine(0, 2);
-    if (Btn(u8"+"))     emitImguiSignal(ToolbarAction::More);
+    if (Btn(ICON_SQUARE))     emitImguiSignal(ToolbarAction::More);
 
     ImGui::PopStyleVar(4);
     ImGui::PopStyleColor(6);
     ImGui::End();
-}
-
-void FilamentEngine::drawImGui()
-{
-    if (!m_imguiHelper) return;
-
-    updateImGuiDisplaySize(500, 500, 1.0f);
-
-    // 渲染 ImGui
-    m_imguiHelper->render(0.016f, [this](filament::Engine* engine, filament::View* view) {
-        // 自定义 UI：Viewport Overlay 工具栏
-        ImGui::SetNextWindowPos(ImVec2(0, 0));  // 固定在左上角
-        ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, 32));  // 固定高度 32px
-
-        ImGui::Begin("Viewport Overlay", nullptr,
-            ImGuiWindowFlags_NoTitleBar |
-            ImGuiWindowFlags_NoResize |
-            ImGuiWindowFlags_NoMove |
-            ImGuiWindowFlags_NoCollapse |
-            ImGuiWindowFlags_NoScrollbar |
-            ImGuiWindowFlags_NoBackground);  // 透明背景
-
-        // 工具栏布局（横向排列）
-        ImGui::BeginGroup();  // 左侧按钮组
-
-        if (ImGui::Button("Perspective")) {
-            // 处理点击事件
-        }
-        ImGui::SameLine();
-
-        if (ImGui::Button("Lit")) {
-            // 处理点击
-        }
-        ImGui::SameLine();
-
-        if (ImGui::Button("Show")) {
-            // 处理点击
-        }
-
-        ImGui::EndGroup();
-
-        // 中间填充
-        ImGui::SameLine();
-        ImGui::Dummy(ImVec2(ImGui::GetContentRegionAvail().x * 0.5f, 0));
-
-        // 右侧图标/状态（示例）
-        ImGui::SameLine();
-        ImGui::TextColored(ImVec4(1, 1, 0, 1), "FPS: %.1f", ImGui::GetIO().Framerate);
-
-        ImGui::End();
-     });
 }
 
 void FilamentEngine::clearPixel()

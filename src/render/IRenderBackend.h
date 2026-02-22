@@ -1,4 +1,4 @@
-#ifndef I_RENDER_BAKCEND_H
+#ifndef I_RENDER_BACKEND_H
 #define I_RENDER_BACKEND_H
 
 #include "ui/viewport/IViewPortSurface.h"
@@ -15,4 +15,4 @@ public:
     virtual void renderFrame() = 0;
 };
 
-#endif // !I_RENDER_BAKCEND_H
+#endif // !I_RENDER_BACKEND_H

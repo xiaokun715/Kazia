@@ -1,5 +1,6 @@
 #include "ViewportWidget.h"
 #include "render/Renderer.h"
+#include "OverlayUIWidget.h"
 #include <QtOpenGLWidgets/QOpenGLWidget>
 #include <QOpenGLFunctions>
 #include <QTimer>
@@ -8,7 +9,7 @@
 #include <iostream>
 #include <imgui.h>
 
-RenderWidget::RenderWidget(QWidget *parent)
+ViewportWidget::ViewportWidget(QWidget *parent)
     : QOpenGLWidget(parent)
     , m_renderer(nullptr)
     , m_renderTimer(nullptr)
@@ -16,15 +17,15 @@ RenderWidget::RenderWidget(QWidget *parent)
     , m_cameraDistance(5.0f)
     , m_cameraYaw(0.0f)
     , m_cameraPitch(0.0f)
-    , m_initialWidth(0)
-    , m_initialHeight(0)
+    , m_initialWidth(1)
+    , m_initialHeight(1)
 {
     // 创建渲染定时器
     m_renderTimer = new QTimer(this);
-    connect(m_renderTimer, &QTimer::timeout, this, &RenderWidget::renderFrame);
+    connect(m_renderTimer, &QTimer::timeout, this, &ViewportWidget::renderFrame);
 }
 
-RenderWidget::~RenderWidget()
+ViewportWidget::~ViewportWidget()
 {
     // 先停止渲染定时器，避免在销毁渲染器后仍然触发渲染事件
     if (m_renderTimer) {
@@ -42,7 +43,22 @@ RenderWidget::~RenderWidget()
     delete m_renderTimer;
 }
 
-void RenderWidget::initializeGL()
+void ViewportWidget::setupOverlayUI()
+{
+    auto engine = m_renderer->engine();
+    auto uiView = m_renderer->uiView();
+    
+    m_overlayUI = std::make_unique<OverlayUIWidget>();
+    m_overlayUI->initialize(engine, uiView, m_initialWidth, m_initialHeight);
+
+    m_overlayUI->setToolbarCallback(
+        [this](ToolbarAction action) {
+            // TODO: 派发到 Editor / Gizmo / Camera
+        }
+    );
+}
+
+void ViewportWidget::initializeGL()
 {
     initializeRenderer();
 
@@ -50,12 +66,12 @@ void RenderWidget::initializeGL()
     m_renderTimer->start(16); // 约 60 FPS
 }
 
-void RenderWidget::paintGL()
+void ViewportWidget::paintGL()
 {
     renderFrame();
 }
 
-void RenderWidget::resizeGL(int w, int h)
+void ViewportWidget::resizeGL(int w, int h)
 {
     if (m_renderer) {
         m_renderer->resize(w * devicePixelRatio(), h * devicePixelRatio());
@@ -64,9 +80,12 @@ void RenderWidget::resizeGL(int w, int h)
         m_initialWidth = w;
         m_initialHeight = h;
     }
+
+    // 更新 ImGui DisplaySize
+    m_overlayUI->resize(w, h, 1.0f);
 }
 
-bool RenderWidget::event(QEvent* e)
+bool ViewportWidget::event(QEvent* e)
 {
     if (ImGui::GetCurrentContext()) {
         ImGuiIO& io = ImGui::GetIO();
@@ -119,7 +138,7 @@ bool RenderWidget::event(QEvent* e)
     return QOpenGLWidget::event(e);
 }
 
-void RenderWidget::mousePressEvent(QMouseEvent* event)
+void ViewportWidget::mousePressEvent(QMouseEvent* event)
 {
     if (ImGui::GetIO().WantCaptureMouse)
         return;
@@ -130,7 +149,7 @@ void RenderWidget::mousePressEvent(QMouseEvent* event)
     m_isDragging = true;
     m_lastMousePos = event->pos();
 
-    auto view = m_renderer->getFilamentEngine()->getView();
+    auto view = m_renderer->view();
     if (!view) return;
 
     float dpr = devicePixelRatio();
@@ -147,7 +166,7 @@ void RenderWidget::mousePressEvent(QMouseEvent* event)
         });
 }
 
-void RenderWidget::mouseMoveEvent(QMouseEvent* event)
+void ViewportWidget::mouseMoveEvent(QMouseEvent* event)
 {
     if (ImGui::GetIO().WantCaptureMouse)
         return;
@@ -175,7 +194,7 @@ void RenderWidget::mouseMoveEvent(QMouseEvent* event)
     }
 }
 
-void RenderWidget::mouseReleaseEvent(QMouseEvent* event)
+void ViewportWidget::mouseReleaseEvent(QMouseEvent* event)
 {
     if (ImGui::GetIO().WantCaptureMouse)
         return;
@@ -185,7 +204,7 @@ void RenderWidget::mouseReleaseEvent(QMouseEvent* event)
     }
 }
 
-void RenderWidget::wheelEvent(QWheelEvent* event)
+void ViewportWidget::wheelEvent(QWheelEvent* event)
 {
     // 调整相机距离
     m_cameraDistance -= event->angleDelta().y() * 0.001f;
@@ -201,7 +220,7 @@ void RenderWidget::wheelEvent(QWheelEvent* event)
     }
 }
 
-void RenderWidget::initializeRenderer()
+void ViewportWidget::initializeRenderer()
 {
     // 创建渲染器
     m_renderer = new Renderer();
@@ -215,9 +234,12 @@ void RenderWidget::initializeRenderer()
 
     // 初始化渲染器
     m_renderer->initialize(nativeWindow, initWidth, initHeight);
+
+    // 设置Overlay UI界面
+    setupOverlayUI();
 }
 
-void RenderWidget::shutdownRenderer()
+void ViewportWidget::shutdownRenderer()
 {
     if (m_renderer) {
         try {
@@ -231,9 +253,32 @@ void RenderWidget::shutdownRenderer()
     }
 }
 
-void RenderWidget::renderFrame()
+void ViewportWidget::renderFrame()
 {
-    if (m_renderer) {
-        m_renderer->renderFrame();
+    //if (m_renderer) {
+    //    m_overlayUI->render(0.016f);
+    //    m_renderer->renderFrame();
+    //}
+
+    auto renderer = m_renderer->renderer();
+    auto swapChain = m_renderer->swapChain();
+    auto view = m_renderer->view();
+    auto uiView = m_renderer->uiView();
+
+    if (m_overlayUI && width() > 0 && height() > 0) {
+        m_overlayUI->resize(width(), height(), 1.0f);
+    }
+
+    if (renderer->beginFrame(swapChain)) {
+
+        m_overlayUI->render(0.016f);
+
+        auto* drawData = ImGui::GetDrawData();
+
+        // 渲染 Filament 视图
+        renderer->render(view);
+        renderer->render(uiView);
+
+        renderer->endFrame();
     }
 }

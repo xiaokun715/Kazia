@@ -2,7 +2,9 @@
 #include "MainWindowTitleBar.h"
 #include "render/renderer.h"
 #include "inspector/PropertiesWidget.h"
-#include "viewport/ViewportContainer.h"
+#include "viewport/OpenGLViewPort.h"
+#include "viewport/VulkanViewPort.h"
+#include "viewport/ViewportWidget.h"
 #include <QWidget>
 #include <QMenuBar>
 #include <QMenu>
@@ -95,7 +97,7 @@ void MainWindow::createDockWidgets()
     m_viewportDock = new ads::CDockWidget("Viewport");
     //m_viewportContainer = new ViewportContainer(this);
     //m_viewportDock->setWidget(m_viewportContainer);
-    m_viewportWidget = new RenderWidget(this);
+    m_viewportWidget = new ViewportWidget(this);
     m_viewportDock->setWidget(m_viewportWidget);
     QString iconPath = QCoreApplication::applicationDirPath() + "/icons/bootstrap/app.svg";
     m_viewportDock->setIcon(QIcon(iconPath));

@@ -9,14 +9,18 @@
 #include <QTimer>
 
 class Renderer;
+class OverlayUIWidget;
 
-class RenderWidget : public QOpenGLWidget
+class ViewportWidget : public QOpenGLWidget
 {
     Q_OBJECT
 
 private:
     Renderer* m_renderer;
     QTimer* m_renderTimer;
+
+    // 成员
+    std::unique_ptr<OverlayUIWidget> m_overlayUI;
 
     // 相机控制变量
     bool m_isDragging;
@@ -32,6 +36,8 @@ private:
     void initializeRenderer();
     void shutdownRenderer();
 
+    void setupOverlayUI();
+
 protected:
     void initializeGL() override;
     void paintGL() override;
@@ -44,8 +50,8 @@ protected:
     void wheelEvent(QWheelEvent* event) override;
 
 public:
-    RenderWidget(QWidget *parent = nullptr);
-    ~RenderWidget();
+    ViewportWidget(QWidget *parent = nullptr);
+    ~ViewportWidget();
 
     Renderer* getRenderer() const { return m_renderer; }
 
