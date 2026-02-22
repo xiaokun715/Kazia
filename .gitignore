@@ -2,3 +2,4 @@ build/*
 install/*
 .trae/*
 thirdparty/*
+src/asset/*

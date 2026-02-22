@@ -1,24 +1,23 @@
 #include "MainWindow.h"
-#include "RenderWidget.h"
-#include "SceneTree.h"
-#include "PropertiesPanel.h"
-#include "TitleBar.h"
-#include "DockTitleBar.h"
+#include "MainWindowTitleBar.h"
+#include "render/renderer.h"
+#include "inspector/PropertiesWidget.h"
+#include "viewport/ViewportContainer.h"
+#include <QWidget>
 #include <QMenuBar>
 #include <QMenu>
 #include <QToolBar>
 #include <QApplication>
 #include <QVBoxLayout>
-#include <QWidget>
+#include <QFileDialog>
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(QWidget* parent)
     : QMainWindow(parent)
-    , m_renderWidget(nullptr)
-    , m_sceneTree(nullptr)
-    , m_propertiesPanel(nullptr)
+    , m_viewportWidget(nullptr)
+    , m_viewportContainer(nullptr)
     , m_titleBar(nullptr)
-    , m_sceneTreeDock(nullptr)
-    , m_propertiesPanelDock(nullptr)
+    , m_sceneTreeWidget(nullptr)
+    , m_propertiesWidget(nullptr)
     , m_editModeIndicator(nullptr)
     , m_coordinateInfo(nullptr)
     , m_fpsIndicator(nullptr)
@@ -28,19 +27,18 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowFlags(Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground, false);
     setObjectName("MainWindow");
-    
-    // 设置最小大小
     setMinimumSize(800, 600);
+
+    // Create the dock manager
+    ads::CDockManager::setConfigFlags(ads::CDockManager::DefaultOpaqueConfig);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasCloseButton, true);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasUndockButton, false);
+    ads::CDockManager::setConfigFlag(ads::CDockManager::DockAreaHasTabsMenuButton, false);
+    m_dockManager = new ads::CDockManager(this);
+    setCentralWidget(m_dockManager);
 
     // 创建自定义标题栏
     setupCustomTitleBar();
-
-    // 创建渲染视口
-    m_renderWidget = new RenderWidget(this);
-    setCentralWidget(m_renderWidget);
-
-    // 创建菜单
-    createMenus();
 
     // 创建工具栏
     createToolbars();
@@ -52,7 +50,7 @@ MainWindow::MainWindow(QWidget *parent)
     setupStatusBar();
 
     // 设置布局
-    resize(1200, 800);
+    showMaximized();
 }
 
 MainWindow::~MainWindow()
@@ -63,46 +61,7 @@ void MainWindow::setupCustomTitleBar()
 {
     // 创建自定义标题栏
     m_titleBar = new TitleBar(this, this);
-    
-    // 将标题栏添加到窗口顶部
-    // 注意：使用 setMenuWidget 将标题栏设置为菜单小部件
-    // 这样标题栏会显示在菜单栏的上方
     setMenuWidget(m_titleBar);
-}
-
-void MainWindow::createMenus()
-{
-    QMenuBar* menuBar = this->menuBar();
-    menuBar->setObjectName("MenuBar");
-
-    // 文件菜单
-    QMenu* fileMenu = menuBar->addMenu("文件");
-    fileMenu->setObjectName("FileMenu");
-    fileMenu->addAction("新建", this, nullptr, QKeySequence::New);
-    fileMenu->addAction("打开", this, nullptr, QKeySequence::Open);
-    fileMenu->addAction("保存", this, nullptr, QKeySequence::Save);
-    fileMenu->addSeparator();
-    fileMenu->addAction("退出", this, &QApplication::quit);
-
-    // 编辑菜单
-    QMenu* editMenu = menuBar->addMenu("编辑");
-    editMenu->setObjectName("EditMenu");
-    editMenu->addAction("撤销", this, nullptr, QKeySequence::Undo);
-    editMenu->addAction("重做", this, nullptr, QKeySequence::Redo);
-    editMenu->addSeparator();
-    editMenu->addAction("复制", this, nullptr, QKeySequence::Copy);
-    editMenu->addAction("粘贴", this, nullptr, QKeySequence::Paste);
-
-    // 视图菜单
-    QMenu* viewMenu = menuBar->addMenu("视图");
-    viewMenu->setObjectName("ViewMenu");
-    viewMenu->addAction("场景树", this, nullptr);
-    viewMenu->addAction("属性面板", this, nullptr);
-
-    // 帮助菜单
-    QMenu* helpMenu = menuBar->addMenu("帮助");
-    helpMenu->setObjectName("HelpMenu");
-    helpMenu->addAction("关于", this, nullptr);
 }
 
 void MainWindow::createToolbars()
@@ -132,54 +91,49 @@ void MainWindow::createToolbars()
 
 void MainWindow::createDockWidgets()
 {
+    // 创建渲染视口
+    m_viewportDock = new ads::CDockWidget("Viewport");
+    //m_viewportContainer = new ViewportContainer(this);
+    //m_viewportDock->setWidget(m_viewportContainer);
+    m_viewportWidget = new RenderWidget(this);
+    m_viewportDock->setWidget(m_viewportWidget);
+    QString iconPath = QCoreApplication::applicationDirPath() + "/icons/bootstrap/app.svg";
+    m_viewportDock->setIcon(QIcon(iconPath));
+    m_dockManager->addDockWidget(ads::LeftDockWidgetArea, m_viewportDock);
+
     // 场景树停靠窗口
-    m_sceneTreeDock = new QDockWidget("场景树", this);
-    m_sceneTreeDock->setObjectName("SceneTreeDock");
-    
-    // 创建自定义标题栏
-    DockTitleBar* sceneTreeTitleBar = new DockTitleBar(m_sceneTreeDock, m_sceneTreeDock);
-    m_sceneTreeDock->setTitleBarWidget(sceneTreeTitleBar);
-    
-    m_sceneTree = new SceneTree(m_sceneTreeDock);
-    m_sceneTreeDock->setWidget(m_sceneTree);
-    addDockWidget(Qt::LeftDockWidgetArea, m_sceneTreeDock);
+    m_sceneTreeDock = new ads::CDockWidget("Scene");
+    m_sceneTreeWidget = new QWidget(this);
+    m_sceneTreeDock->setWidget(m_sceneTreeWidget);
+    m_dockManager->addDockWidget(ads::RightDockWidgetArea, m_sceneTreeDock);
+    m_dockManager->setSplitterSizes(m_sceneTreeDock->dockAreaWidget(), { 700, 300 });
 
     // 属性面板停靠窗口
-    m_propertiesPanelDock = new QDockWidget("属性", this);
-    m_propertiesPanelDock->setObjectName("PropertiesPanelDock");
-    
-    // 创建自定义标题栏
-    DockTitleBar* propertiesTitleBar = new DockTitleBar(m_propertiesPanelDock, m_propertiesPanelDock);
-    m_propertiesPanelDock->setTitleBarWidget(propertiesTitleBar);
-    
-    m_propertiesPanel = new PropertiesPanel(m_propertiesPanelDock);
-    m_propertiesPanelDock->setWidget(m_propertiesPanel);
-    addDockWidget(Qt::RightDockWidgetArea, m_propertiesPanelDock);
+    m_propertiesDock = new ads::CDockWidget("Property");
+    m_propertiesWidget = new PropertiesWidget(this);
+    m_propertiesDock->setWidget(m_propertiesWidget);
+    m_dockManager->addDockWidget(ads::BottomDockWidgetArea, m_propertiesDock, m_sceneTreeDock->dockAreaWidget());
+    m_dockManager->setSplitterSizes(m_propertiesDock->dockAreaWidget(), { 1, 1 });
 
     // 连接场景树和属性面板的信号槽
-    connect(m_sceneTree, &SceneTree::gameObjectSelected, this, [=](const QString& name) {
-        // 这里可以从场景中获取游戏对象，并设置属性面板的属性
-        m_propertiesPanel->setGameObjectProperties(
-            name,
-            0.0f, 0.0f, 0.0f,
-            0.0f, 0.0f, 0.0f,
-            1.0f, 1.0f, 1.0f
-        );
-    });
+    //connect(m_sceneTree, &SceneTree::gameObjectSelected, this, [=](const QString& name) {
+    //    // 这里可以从场景中获取游戏对象，并设置属性面板的属性
+    //    m_propertiesPanel->setGameObjectProperties(
+    //        name,
+    //        0.0f, 0.0f, 0.0f,
+    //        0.0f, 0.0f, 0.0f,
+    //        1.0f, 1.0f, 1.0f
+    //    );
+    //});
 
     // 连接属性面板的信号
-    connect(m_propertiesPanel, &PropertiesPanel::propertyChanged, this, [=](const QString& property, float value) {
+    connect(m_propertiesWidget, &PropertiesWidget::propertyChanged, this, [=](const QString& property, float value) {
         // 这里可以更新游戏对象的属性
     });
 
-    connect(m_propertiesPanel, &PropertiesPanel::nameChanged, this, [=](const QString& name) {
+    connect(m_propertiesWidget, &PropertiesWidget::nameChanged, this, [=](const QString& name) {
         // 这里可以更新游戏对象的名称
     });
-
-    // 添加一些测试对象到场景树
-    m_sceneTree->addGameObject("立方体1");
-    m_sceneTree->addGameObject("球体1");
-    m_sceneTree->addGameObject("圆柱体1");
 }
 
 void MainWindow::resizeEvent(QResizeEvent* event)
@@ -187,21 +141,17 @@ void MainWindow::resizeEvent(QResizeEvent* event)
     QMainWindow::resizeEvent(event);
 
     // 当窗口大小改变时，渲染视口也需要调整大小
-    if (m_renderWidget) {
-        m_renderWidget->resize(m_renderWidget->size());
+    //if (m_viewportContainer) {
+		//m_viewportContainer->getRenderWidget()->resize(m_viewportContainer->size());
+    //}
+    if (m_viewportWidget) {
+        m_viewportWidget->resize(m_viewportWidget->size());
     }
 }
 
 void MainWindow::changeEvent(QEvent* event)
 {
     QMainWindow::changeEvent(event);
-    
-    // 当窗口状态改变时（如最大化/还原），更新最大化按钮
-    if (event->type() == QEvent::WindowStateChange) {
-        if (m_titleBar) {
-            m_titleBar->updateMaximizeButton();
-        }
-    }
 }
 
 void MainWindow::setupStatusBar()
@@ -258,4 +208,30 @@ void MainWindow::setupStatusBar()
     m_logInfo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     m_logInfo->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     statusBar->addWidget(m_logInfo);
+}
+
+// 文件菜单槽函数
+void MainWindow::onNewScene() {
+
+}
+
+void MainWindow::onOpenScene() {
+    QString filePath = QFileDialog::getOpenFileName(
+        nullptr,
+        "选择文件",
+        ".",
+        "gltf文件 (*.glb *gltf);;所有文件 (*.*)"
+    );
+    //m_viewportContainer->getRenderWidget()->getRenderer()->addGltfModel(filePath);
+    m_viewportWidget->getRenderer()->addGltfModel(filePath);
+	//m_sceneTree->addGltfModel(filePath);
+}
+
+void MainWindow::onSaveScene() {
+
+}
+
+// 导入gltf模型
+void MainWindow::onImportGltf() {
+
 }
